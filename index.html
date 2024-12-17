@@ -1,0 +1,396 @@
+import React from 'react';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { HelpCircle } from 'lucide-react';
+
+const RiskAssessment = () => {
+  const [formData, setFormData] = React.useState({
+    receivables: '',
+    topCustomers: '',
+    industry: 'Manufacturing',
+    paymentTerms: ''
+  });
+  
+  const [errors, setErrors] = React.useState({});
+  const [showResults, setShowResults] = React.useState(false);
+  const [results, setResults] = React.useState(null);
+
+  const industries = [
+    'Manufacturing',
+    'Retail',
+    'Technology',
+    'Healthcare',
+    'Construction',
+    'Logistics',
+    'Shipping'
+  ];
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.receivables) {
+      newErrors.receivables = 'Please enter your outstanding receivables';
+    } else {
+      const receivablesNum = Number(formData.receivables);
+      if (receivablesNum <= 0) {
+        newErrors.receivables = 'Please enter a value greater than 0';
+      } else if (receivablesNum > 1000000000) {
+        newErrors.receivables = 'For amounts over £1B, please contact us directly';
+      }
+    }
+    
+    if (!formData.topCustomers && formData.topCustomers !== 0) {
+      newErrors.topCustomers = 'Please enter your customer concentration';
+    } else {
+      const concentration = Number(formData.topCustomers);
+      if (concentration <= 0) {
+        newErrors.topCustomers = 'Customer concentration must be greater than 0%';
+      } else if (concentration > 100) {
+        newErrors.topCustomers = 'Percentage cannot exceed 100';
+      } else if (concentration < 5) {
+        newErrors.topCustomers = 'Customer concentration seems unusually low. Please verify';
+      }
+    }
+    
+    if (!formData.paymentTerms) {
+      newErrors.paymentTerms = 'Please enter your payment terms';
+    } else {
+      const terms = Number(formData.paymentTerms);
+      if (terms <= 0) {
+        newErrors.paymentTerms = 'Payment terms must be at least 1 day';
+      } else if (terms > 180) {
+        newErrors.paymentTerms = 'For payment terms over 180 days, please contact us directly';
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const calculateRealRisk = () => {
+    let baseScore = 40;
+    
+    if (Number(formData.receivables) > 100000) baseScore += 20;
+    else if (Number(formData.receivables) > 50000) baseScore += 15;
+    else if (Number(formData.receivables) > 10000) baseScore += 10;
+    else if (Number(formData.receivables) > 1000) baseScore += 5;
+    else baseScore += 1;
+    
+    if (Number(formData.topCustomers) > 80) baseScore += 25;
+    else if (Number(formData.topCustomers) > 60) baseScore += 20;
+    else if (Number(formData.topCustomers) > 40) baseScore += 15;
+    else if (Number(formData.topCustomers) > 20) baseScore += 10;
+    else baseScore += 2;
+    
+    if (Number(formData.paymentTerms) > 90) baseScore += 20;
+    else if (Number(formData.paymentTerms) > 60) baseScore += 15;
+    else if (Number(formData.paymentTerms) > 30) baseScore += 10;
+    else baseScore += 2;
+
+    return Math.min(95, Math.round(baseScore));
+  };
+
+  const getRiskLevel = (score) => {
+    return {
+      level: score >= 80 ? "Very High" : 
+             score >= 70 ? "High" :
+             score >= 60 ? "Medium" :
+             score >= 50 ? "Moderate" : "Low",
+      range: score >= 80 ? "80-95" :
+             score >= 70 ? "70-79" :
+             score >= 60 ? "60-69" :
+             score >= 50 ? "50-59" : "40-49",
+      context: score >= 80 ? "Critical risk level" :
+               score >= 70 ? "High risk exposure" :
+               score >= 60 ? "Notable risk factors" :
+               score >= 50 ? "Moderate risk exposure" : "Managed risk level"
+    };
+  };
+
+  const getColorScheme = (level) => {
+    switch (level) {
+      case "Very High":
+        return {
+          bg: "bg-red-50",
+          text: "text-red-600",
+          border: "border-red-200"
+        };
+      case "High":
+        return {
+          bg: "bg-orange-50",
+          text: "text-orange-600",
+          border: "border-orange-200"
+        };
+      case "Medium":
+        return {
+          bg: "bg-yellow-50",
+          text: "text-yellow-700",
+          border: "border-yellow-200"
+        };
+      case "Moderate":
+        return {
+          bg: "bg-blue-50",
+          text: "text-blue-600",
+          border: "border-blue-200"
+        };
+      default:
+        return {
+          bg: "bg-green-50",
+          text: "text-green-600",
+          border: "border-green-200"
+        };
+    }
+  };
+
+  const getRecommendation = (level, data) => {
+    const recommendations = {
+      "Very High": {
+        message: "We strongly recommend implementing comprehensive credit insurance coverage immediately. Your current risk profile shows significant exposure that requires urgent attention:",
+        points: [
+          `High customer concentration (${data.topCustomers}%) creates significant default risk`,
+          `Extended payment terms of ${data.paymentTerms} days increase exposure`,
+          `Outstanding receivables of £${data.receivables} represent substantial risk`
+        ]
+      },
+      "High": {
+        message: "We recommend considering credit insurance coverage to protect your business. Your risk assessment indicates several areas of concern:",
+        points: [
+          `Customer concentration of ${data.topCustomers}% suggests vulnerability to individual defaults`,
+          `Payment terms of ${data.paymentTerms} days may impact cash flow`,
+          `Current receivables of £${data.receivables} represent notable exposure`
+        ]
+      },
+      "Medium": {
+        message: "Based on your risk profile, credit insurance would be a valuable tool to protect your business. Consider these factors:",
+        points: [
+          `Your ${data.topCustomers}% customer concentration could be optimised`,
+          `${data.paymentTerms} day payment terms present moderate risk`,
+          `Receivables of £${data.receivables} warrant protection`
+        ]
+      },
+      "Moderate": {
+        message: "Whilst your current risk profile is manageable, credit insurance could still provide valuable protection and peace of mind:",
+        points: [
+          `Your customer concentration of ${data.topCustomers}% shows good diversification`,
+          `${data.paymentTerms} day payment terms are within normal range`,
+          `Current exposure of £${data.receivables} could benefit from protection`
+        ]
+      },
+      "Low": {
+        message: "Your business demonstrates strong risk management practices. While your current risk profile is well-managed, credit insurance can still provide valuable protection against unforeseen events:",
+        points: [
+          data.topCustomers <= 20 
+            ? `Your customer concentration of ${data.topCustomers}% shows excellent diversification`
+            : `Your customer concentration of ${data.topCustomers}% shows room for improvement`,
+          data.paymentTerms <= 14
+            ? `${data.paymentTerms} day payment terms show strong cash flow management`
+            : `${data.paymentTerms} day payment terms are within acceptable range`,
+          data.receivables < 1000
+            ? `Current exposure of £${data.receivables} is minimal, but protection is still valuable`
+            : `Current exposure of £${data.receivables} could benefit from protection`
+        ]
+      }
+    };
+    return recommendations[level];
+  };
+
+  const handleClick = () => {
+    if (validateForm()) {
+      const riskScore = calculateRealRisk();
+      const riskInfo = getRiskLevel(riskScore);
+      const recommendation = getRecommendation(riskInfo.level, formData);
+      const colours = getColorScheme(riskInfo.level);
+      
+      setResults({
+        score: riskScore,
+        level: riskInfo.level,
+        range: riskInfo.range,
+        context: riskInfo.context,
+        colors: colours,
+        recommendation: recommendation,
+        timestamp: new Date().toLocaleString('en-GB')
+      });
+      setShowResults(true);
+    }
+  };
+
+  if (!showResults) {
+    return (
+      <div className="max-w-lg mx-auto p-6">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold">Credit Risk Assessment</h1>
+        </div>
+        
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="block font-medium">
+              Total Outstanding Receivables (£)
+            </label>
+            <input
+              type="number"
+              step="1000"
+              className="w-full p-2 border rounded"
+              value={formData.receivables}
+              onChange={(e) => {
+                setFormData({...formData, receivables: e.target.value});
+                setErrors({...errors, receivables: ''});
+              }}
+              onWheel={(e) => e.target.blur()}
+            />
+            {errors.receivables && (
+              <p className="text-red-500 text-sm mt-1">{errors.receivables}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="block font-medium">
+              Top 3 Customer Concentration (%)
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button className="inline-flex ml-2 text-gray-500 hover:text-gray-700">
+                    <HelpCircle className="h-4 w-4" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="max-w-lg">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>How to Calculate Customer Concentration</AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-4">
+                      <p>To calculate your top 3 customer concentration:</p>
+                      <ol className="list-decimal pl-4 space-y-2">
+                        <li>Add up the revenue from your top 3 customers for the past year</li>
+                        <li>Divide that sum by your total revenue for the year</li>
+                        <li>Multiply by 100 to get the percentage</li>
+                      </ol>
+                      <p className="text-sm mt-4">Example: If your total revenue is £1M and your top 3 customers together brought in £400K, your concentration would be (400,000 ÷ 1,000,000) × 100 = 40%</p>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogCancel>Close</AlertDialogCancel>
+                </AlertDialogContent>
+              </AlertDialog>
+            </label>
+            <input
+              type="number"
+              step="1"
+              min="0"
+              max="100"
+              className="w-full p-2 border rounded"
+              value={formData.topCustomers}
+              onChange={(e) => {
+                setFormData({...formData, topCustomers: e.target.value});
+                setErrors({...errors, topCustomers: ''});
+              }}
+              onWheel={(e) => e.target.blur()}
+            />
+            {errors.topCustomers && (
+              <p className="text-red-500 text-sm mt-1">{errors.topCustomers}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="block font-medium">
+              Industry/Sector
+            </label>
+            <select
+              className="w-full p-2 border rounded"
+              value={formData.industry}
+              onChange={(e) => setFormData({...formData, industry: e.target.value})}
+            >
+              {industries.map(industry => (
+                <option key={industry} value={industry}>
+                  {industry}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block font-medium">
+              Average Payment Terms (Days)
+            </label>
+            <input
+              type="number"
+              step="1"
+              className="w-full p-2 border rounded"
+              value={formData.paymentTerms}
+              onChange={(e) => {
+                setFormData({...formData, paymentTerms: e.target.value});
+                setErrors({...errors, paymentTerms: ''});
+              }}
+              onWheel={(e) => e.target.blur()}
+            />
+            {errors.paymentTerms && (
+              <p className="text-red-500 text-sm mt-1">{errors.paymentTerms}</p>
+            )}
+          </div>
+
+          <button 
+            onClick={handleClick}
+            className="w-full bg-blue-600 text-white py-3 rounded font-medium hover:bg-blue-700 transition-colors"
+          >
+            Generate Risk Assessment
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-lg mx-auto p-6 mb-20">
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h2 className="text-xl font-bold mb-6">Risk Assessment Results</h2>
+        
+        <div className="space-y-8">
+          <div className={`${results.colors.bg} p-4 rounded-lg text-center`}>
+            <div className={`text-3xl font-bold ${results.colors.text}`}>
+              {results.range}
+            </div>
+            <div className="text-sm text-gray-600 mt-1">
+              Assured Trade Risk Index<sup className="ml-1">ⓘ</sup>
+            </div>
+            <div className={`font-medium mt-2 ${results.colors.text}`}>
+              {results.level} - {results.context}
+            </div>
+          </div>
+          
+          <div className={`p-6 rounded-lg ${results.colors.bg} ${results.colors.border} border`}>
+            <h3 className="font-semibold mb-4">Risk Assessment:</h3>
+            <p className={`${results.colors.text} mb-6`}>
+              {results.recommendation.message}
+            </p>
+            <ul className="space-y-3">
+              {results.recommendation.points.map((point, index) => (
+                <li key={index} className="flex items-start gap-3 text-gray-700">
+                  <span className="font-bold min-w-4">•</span>
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          
+          <div className="flex flex-col items-center space-y-3 my-8">
+            <p className="text-gray-600 text-center">
+              Speak with an Assured Trade expert about your risk assessment results.
+            </p>
+            <button 
+              className={`inline-flex items-center justify-center px-6 py-3 ${results.colors.bg} border ${results.colors.border} rounded-lg hover:opacity-90 transition-opacity ${results.colors.text} font-medium`}
+            >
+              Book a Call with an Expert
+            </button>
+          </div>
+          
+          <button 
+            onClick={() => setShowResults(false)}
+            className="w-full bg-gray-100 text-gray-600 py-3 rounded hover:bg-gray-200 transition-colors mt-6"
+          >
+            Generate New Assessment
+          </button>
+          
+          <div className="text-center text-xs text-gray-500 mt-4">
+            Learn more about the Assured Trade Risk Index<sup className="ml-1">ⓘ</sup>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default RiskAssessment;
